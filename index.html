@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Fic Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Theme Definitions */
+    body.theme-agust { background-color: #0f172a; color: #f8fafc; }
+    body.theme-mimi { background-color: #fefce8; color: #451a03; }
+    body.theme-kitty { background-color: #f0fdf4; color: #064e3b; }
+    body.theme-suga { background-color: #fff7ed; color: #7c2d12; }
+
+    /* Card Themes */
+    .card-agust { background-color: #1e293b; border-color: #334155; color: #f8fafc; }
+    .card-mimi { background-color: #fef08a; border-color: #fde047; color: #451a03; }
+    .card-kitty { background-color: #ffffff; border-color: #a7f3d0; color: #064e3b; }
+    .card-suga { background-color: #ffffff; border-color: #ffedd5; color: #7c2d12; }
+
+    /* Panel Themes */
+    .panel-agust { background-color: #1e293b; border-color: #334155; color: #f8fafc; }
+    .panel-mimi { background-color: #fef9c3; border-color: #fde047; color: #451a03; }
+    .panel-kitty { background-color: #e6f7f0; border-color: #6ee7b7; color: #064e3b; }
+    .panel-suga { background-color: #ffedd5; border-color: #fed7aa; color: #7c2d12; }
+
+    /* Input Themes */
+    .input-agust { background-color: #0f172a; border-color: #334155; color: #ffffff; }
+    .input-mimi { background-color: #ffffff; border-color: #fde047; color: #451a03; }
+    .input-kitty { background-color: #ffffff; border-color: #6ee7b7; color: #064e3b; }
+    .input-suga { background-color: #ffffff; border-color: #fdba74; color: #7c2d12; }
+
+    /* Floating Rain Canvas Overlay */
+    #rainCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 40;
+    }
+  </style>
+</head>
+<body id="appBody" class="theme-kitty min-h-screen p-4 md:p-8 font-sans transition-colors duration-200 relative overflow-x-hidden">
+  
+  <!-- Canvas for Emoji Rain -->
+  <canvas id="rainCanvas"></canvas>
+
+  <div class="max-w-7xl mx-auto relative z-10">
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-gray-300/40 pb-6">
+      <div>
+        <h1 class="text-3xl font-bold text-amber-500 flex items-center gap-2">
+          <span>🍊</span> Personal Fic Tracker <span>🐥</span>
+        </h1>
+        <p class="text-sm opacity-80 mt-1">Explore your fic collection with dynamic display modes and themes.</p>
+      </div>
+      
+      <!-- Static Buttons Bar -->
+      <div class="flex items-center gap-3 flex-wrap">
+        
+        <!-- Emoji Rain Toggle Button -->
+        <button id="btnRainToggle" class="bg-amber-500 hover:bg-amber-600 text-white font-medium px-3 py-2 rounded-xl text-sm shadow-md flex items-center gap-1.5 transition" onclick="toggleRain()">
+          🍊🐥 Rain: ON
+        </button>
+
+        <!-- View Mode Switcher -->
+        <div id="btnGroupView" class="flex items-center gap-1 bg-amber-100 dark:bg-amber-950/60 p-1 rounded-xl border border-amber-300 dark:border-amber-800 shadow-sm">
+          <button id="btnGalleryView" onclick="setViewMode('gallery')" class="px-3 py-1 text-xs rounded-lg font-medium transition bg-amber-600 text-white shadow-sm">🖼️ Gallery</button>
+          <button id="btnMapView" onclick="setViewMode('map')" class="px-3 py-1 text-xs rounded-lg font-medium transition opacity-70 hover:opacity-100">✨ Constellation</button>
+        </div>
+
+        <!-- Theme Selector (Agust, Mimi, Kitty, Suga) -->
+        <div id="btnGroupTheme" class="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
+          <button onclick="setTheme('agust')" class="px-2.5 py-1 text-xs rounded-lg transition hover:bg-gray-700 hover:text-white font-medium">Agust</button>
+          <button onclick="setTheme('mimi')" class="px-2.5 py-1 text-xs rounded-lg transition hover:bg-yellow-400 hover:text-amber-950 font-medium">Mimi</button>
+          <button onclick="setTheme('kitty')" class="px-2.5 py-1 text-xs rounded-lg transition hover:bg-emerald-500 hover:text-white font-medium">Kitty</button>
+          <button onclick="setTheme('suga')" class="px-2.5 py-1 text-xs rounded-lg transition hover:bg-orange-500 hover:text-white font-medium">Suga</button>
+        </div>
+
+        <!-- Dictionary Button -->
+        <button id="btnDict" onclick="openDictionaryModal()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-medium px-3 py-2 rounded-xl text-sm transition shadow-md flex items-center gap-1">
+          📖 Dictionary
+        </button>
+
+        <!-- Add Fic Button -->
+        <button id="btnAddFic" onclick="openModal()" class="bg-orange-500 hover:bg-orange-600 text-white font-medium px-4 py-2 rounded-xl transition text-sm shadow-md flex items-center gap-1">
+          + Add Fic
+        </button>
+      </div>
+    </header>
+
+    <!-- Controls -->
+    <div id="controlsBox" class="panel-kitty grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 p-4 rounded-2xl border shadow-sm">
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider opacity-70 mb-1">Search Gallery</label>
+        <input type="text" id="searchInput" oninput="renderApp()" placeholder="Search title, author, tag..." class="input-kitty w-full rounded-xl px-3 py-2 text-sm focus:outline-none border">
+      </div>
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider opacity-70 mb-1">Group By</label>
+        <select id="groupBySelect" onchange="renderApp()" class="input-kitty w-full rounded-xl px-3 py-2 text-sm focus:outline-none border">
+          <option value="fandom">Fandom</option>
+          <option value="status">Reading Status</option>
+          <option value="tag">Custom Tags</option>
+          <option value="rating">Rating</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider opacity-70 mb-1">Sort By</label>
+        <select id="sortBySelect" onchange="renderApp()" class="input-kitty w-full rounded-xl px-3 py-2 text-sm focus:outline-none border">
+          <option value="title-asc">Title (A to Z)</option>
+          <option value="title-desc">Title (Z to A)</option>
+          <option value="progress">Progress (%)</option>
+          <option value="words">Word Count</option>
+          <option value="rating">Rating (High to Low)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Main Gallery Grid Container -->
+    <div id="ficsContainer" class="space-y-10"></div>
+
+    <!-- Constellation Map View Container -->
+    <div id="constellationContainer" class="hidden relative w-full h-[600px] rounded-2xl border border-teal-500/30 bg-slate-950 overflow-hidden shadow-2xl">
+      <div class="absolute top-4 left-4 z-10 bg-slate-900/80 p-3 rounded-xl border border-slate-700 text-xs space-y-1 text-slate-100">
+        <p class="font-bold text-amber-400">✨ Constellation Map Legend</p>
+        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Completed</div>
+        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-orange-400"></span> In Progress</div>
+        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-300"></span> Unread</div>
+      </div>
+      <canvas id="mapCanvas" class="w-full h-full cursor-pointer"></canvas>
+      <div id="starTooltip" class="absolute hidden pointer-events-none z-20 bg-slate-900 text-white p-3 rounded-xl border border-slate-700 text-xs shadow-xl max-w-xs"></div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div id="ficModal" class="fixed inset-0 bg-slate-950/70 hidden items-center justify-center p-4 z-50 overflow-y-auto backdrop-blur-sm">
+    <div id="ficModalCard" class="card-kitty rounded-2xl p-6 max-w-lg w-full border shadow-2xl my-8">
+      <h2 id="modalTitle" class="text-xl font-bold mb-4 text-amber-500">Add New Fanfiction</h2>
+      <form id="ficForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+        <input type="hidden" id="ficId">
+        <div>
+          <label class="block text-xs font-semibold opacity-80 mb-1">Title</label>
+          <input type="text" id="title" required class="input-kitty w-full rounded-xl px-3 py-2 text-sm border">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold opacity-80 mb-1">Author</label>
+            <input type="text" id="author" required class="input-kitty w-full rounded-xl px-3 py-2 text-sm border">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold opacity-80 mb-1">Fandom</label>
+            <input type="text" id="fandom" required class="input-kitty w-full rounded-xl px-3 py-2 text-sm border">
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold opacity-80 mb-1">Status</label>
+            <select id="status" class="input-kitty w-full rounded-xl px-3 py-2 text-sm border">
+              <option value="Unread">Unread</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold opacity-80 mb-1">Progress (%)</label>
+            <input type="number" id="progress" min="0" max="100" value="0" class="input-kitty w-full rounded-xl px-3 py-2 text-sm border">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold opacity-80 mb-1">Rating (1-5)</label>
+            <input type="number" id="rating" min="1" max="5" value="5" class="input-kitty w-full rounded-xl px-3 py-2 text-sm border">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold opacity-80 mb-1">Word Count</label>
+            <input type="number" id="wordCount" placeholder="0" class="input-kitty w-full rounded-xl px-3 py-2 text-sm border">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold opacity-80 mb-1">Cover Image URL</label>
+            <input type="url" id="coverUrl" placeholder="https://..." class="input-kitty w-full rounded-xl px-3 py-2 text-sm border">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold opacity-80 mb-1">Synopsis / Summary</label>
+          <textarea id="synopsis" rows="4" placeholder="Brief summary..." class="input-kitty w-full rounded-xl px-3 py-2 text-sm border resize-y"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold opacity-80 mb-1">Link / URL</label>
+          <input type="url" id="link" placeholder="https://archiveofourown.org/..." class="input-kitty w-full rounded-xl px-3 py-2 text-sm border">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold opacity-80 mb-1">Custom Tags (comma separated)</label>
+          <input type="text" id="tags" placeholder="Slow Burn, College AU" class="input-kitty w-full rounded-xl px-3 py-2 text-sm border">
+        </div>
+        <div class="flex justify-end gap-3 pt-4 border-t opacity-80">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 text-sm rounded-xl hover:bg-gray-200/50">Cancel</button>
+          <button type="submit" class="px-4 py-2 text-sm bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold shadow">Save Fic</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Highlights & Notes Modal -->
+  <div id="notesModal" class="fixed inset-0 bg-slate-950/70 hidden items-center justify-center p-4 z-50 overflow-y-auto backdrop-blur-sm">
+    <div id="notesModalCard" class="card-kitty rounded-2xl p-6 max-w-xl w-full border shadow-2xl my-8">
+      <div class="flex justify-between items-center mb-4">
+        <h2 id="notesModalTitle" class="text-xl font-bold text-amber-500">Highlights & Notes</h2>
+        <button onclick="closeNotesModal()" class="text-sm opacity-60 hover:opacity-100">✕ Close</button>
+      </div>
+      
+      <form onsubmit="handleAddNote(event)" class="space-y-3 mb-6 p-3 rounded-xl border border-emerald-200/50">
+        <input type="hidden" id="activeFicId">
+        <div>
+          <label class="block text-xs font-semibold opacity-80 mb-1">Favorite Line / Highlighted Quote</label>
+          <textarea id="noteQuote" rows="2" required placeholder="Paste a quote or line you liked..." class="input-kitty w-full rounded-xl px-3 py-2 text-sm border resize-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold opacity-80 mb-1">Personal Note / Re-read Reason (optional)</label>
+          <input type="text" id="noteText" placeholder="e.g. Chapter 4 - Re-read this scene!" class="input-kitty w-full rounded-xl px-3 py-2 text-sm border">
+        </div>
+        <button type="submit" class="w-full py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow">
+          + Add Highlight / Note
+        </button>
+      </form>
+
+      <div id="notesList" class="space-y-3 max-h-60 overflow-y-auto pr-1"></div>
+    </div>
+  </div>
+
+  <!-- Dictionary Modal -->
+  <div id="dictModal" class="fixed inset-0 bg-slate-950/70 hidden items-center justify-center p-4 z-50 backdrop-blur-sm">
+    <div id="dictModalCard" class="card-kitty rounded-2xl p-6 max-w-md w-full border shadow-2xl">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-amber-500">Word Lookup</h2>
+        <button onclick="closeDictionaryModal()" class="text-sm opacity-60 hover:opacity-100">✕</button>
+      </div>
+      <div class="flex gap-2 mb-4">
+        <input type="text" id="dictInput" placeholder="Enter word..." class="input-kitty flex-1 rounded-xl px-3 py-2 text-sm border">
+        <button onclick="lookupWord()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow">Search</button>
+      </div>
+      <div id="dictResult" class="text-sm opacity-90 min-h-[100px] max-h-[250px] overflow-y-auto p-3 rounded-xl border">
+        Enter a word or select text on the page to search definitions.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'my_personal_fics_v2';
+    const THEME_KEY = 'my_fic_tracker_theme';
+    let viewMode = 'gallery';
+    let starNodes = [];
+    let hoveredNode = null;
+    let isRainActive = true;
+    let mapAnimationFrame = null;
+
+    const defaultFics = [
+      { 
+        id: '1', 
+        title: 'hiccup', 
+        author: 'taesaus', 
+        fandom: 'BTS', 
+        status: 'Completed', 
+        progress: 100,
+        wordCount: 92043, 
+        rating: 5, 
+        link: 'https://archiveofourown.org', 
+        tags: ['Slow Burn', 'College AU', 'Soulmates'], 
+        coverUrl: '', 
+        synopsis: 'Min Yoongi & Park Jimin unexpected path towards understanding what they mean to each other.',
+        notes: [{ id: 'n1', quote: 'I think I knew it long before you said it out loud.', text: 'Chapter 12' }]
+      },
+      { 
+        id: '2', 
+        title: 'starlight overdrive', 
+        author: 'nebula_writes', 
+        fandom: 'BTS', 
+        status: 'In Progress', 
+        progress: 45,
+        wordCount: 45200, 
+        rating: 4, 
+        link: 'https://archiveofourown.org', 
+        tags: ['Sci-Fi AU', 'Action'], 
+        coverUrl: '', 
+        synopsis: 'A cosmic journey through forgotten star gates.',
+        notes: []
+      }
+    ];
+
+    function currentTheme() {
+      const saved = localStorage.getItem(THEME_KEY);
+      // Map old theme names to new ones if stored previously
+      if (saved === 'dark') return 'agust';
+      if (saved === 'blonde') return 'mimi';
+      if (saved === 'mint') return 'kitty';
+      if (saved === 'orange') return 'suga';
+      return saved || 'kitty';
+    }
+
+    function setTheme(theme) {
+      localStorage.setItem(THEME_KEY, theme);
+      
+      // Update Tailwind dark mode setting on <html> root
+      if (theme === 'agust') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+
+      // Update Body class
+      document.getElementById('appBody').className = `theme-${theme} min-h-screen p-4 md:p-8 font-sans transition-colors duration-200 relative overflow-x-hidden`;
+      
+      // Update Controls Panel
+      const controlsBox = document.getElementById('controlsBox');
+      if (controlsBox) {
+        controlsBox.className = `panel-${theme} grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 p-4 rounded-2xl border shadow-sm`;
+      }
+
+      // Update Form Inputs
+      const inputs = document.querySelectorAll('#controlsBox input, #controlsBox select, #ficForm input, #ficForm select, #ficForm textarea, #dictInput, #noteQuote, #noteText');
+      inputs.forEach(el => {
+        el.className = `input-${theme} w-full rounded-xl px-3 py-2 text-sm focus:outline-none border`;
+      });
+
+      // Update Modal Cards
+      const modalCards = document.querySelectorAll('#ficModalCard, #notesModalCard, #dictModalCard');
+      modalCards.forEach(card => {
+        card.className = `card-${theme} rounded-2xl p-6 max-w-lg w-full border shadow-2xl my-8`;
+      });
+
+      if (viewMode === 'map') {
+        initConstellationMap();
+      } else {
+        renderGallery();
+      }
+    }
+
+    function setViewMode(mode) {
+      viewMode = mode;
+      const btnGallery = document.getElementById('btnGalleryView');
+      const btnMap = document.getElementById('btnMapView');
+      const containerGallery = document.getElementById('ficsContainer');
+      const containerMap = document.getElementById('constellationContainer');
+
+      if (mode === 'gallery') {
+        btnGallery.className = 'px-3 py-1 text-xs rounded-lg font-medium transition bg-amber-600 text-white shadow-sm';
+        btnMap.className = 'px-3 py-1 text-xs rounded-lg font-medium transition opacity-70 hover:opacity-100';
+        containerGallery.style.display = 'block';
+        containerMap.style.display = 'none';
+        if (mapAnimationFrame) cancelAnimationFrame(mapAnimationFrame);
+        renderGallery();
+      } else {
+        btnMap.className = 'px-3 py-1 text-xs rounded-lg font-medium transition bg-amber-600 text-white shadow-sm';
+        btnGallery.className = 'px-3 py-1 text-xs rounded-lg font-medium transition opacity-70 hover:opacity-100';
+        containerGallery.style.display = 'none';
+        containerMap.style.display = 'block';
+        setTimeout(() => {
+          initConstellationMap();
+        }, 50);
+      }
+    }
+
+    function renderApp() {
+      if (viewMode === 'map') {
+        initConstellationMap();
+      } else {
+        renderGallery();
+      }
+    }
+
+    function getFics() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : defaultFics;
+    }
+
+    function saveFics(fics) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(fics));
+    }
+
+    function getProgressColor(percent) {
+      if (percent === 100) return 'bg-emerald-500';
+      if (percent >= 75) return 'bg-teal-500';
+      if (percent >= 40) return 'bg-orange-400';
+      if (percent > 0) return 'bg-amber-500';
+      return 'bg-gray-300';
+    }
+
+    function renderGallery() {
+      const theme = currentTheme();
+      const fics = getFics();
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const groupBy = document.getElementById('groupBySelect').value;
+      const sortBy = document.getElementById('sortBySelect').value;
+
+      const filtered = fics.filter(f => 
+        f.title.toLowerCase().includes(search) || 
+        f.author.toLowerCase().includes(search) || 
+        f.fandom.toLowerCase().includes(search) || 
+        (f.synopsis && f.synopsis.toLowerCase().includes(search)) ||
+        f.tags.some(t => t.toLowerCase().includes(search))
+      );
+
+      filtered.sort((a, b) => {
+        if (sortBy === 'title-asc') return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+        if (sortBy === 'title-desc') return b.title.localeCompare(a.title, undefined, { sensitivity: 'base' });
+        if (sortBy === 'progress') return (b.progress || 0) - (a.progress || 0);
+        if (sortBy === 'words') return b.wordCount - a.wordCount;
+        if (sortBy === 'rating') return b.rating - a.rating;
+        return a.title.localeCompare(b.title);
+      });
+
+      const grouped = {};
+      filtered.forEach(fic => {
+        if (groupBy === 'tag') {
+          const tags = fic.tags.length ? fic.tags : ['Untagged'];
+          tags.forEach(tag => {
+            const cleanTag = tag.length > 30 ? tag.substring(0, 30) + '...' : tag;
+            if (!grouped[cleanTag]) grouped[cleanTag] = [];
+            grouped[cleanTag].push(fic);
+          });
+        } else if (groupBy === 'fandom') {
+          const key = fic.fandom || 'Unknown Fandom';
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(fic);
+        } else if (groupBy === 'status') {
+          const key = fic.status;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(fic);
+        } else if (groupBy === 'rating') {
+          const key = `${fic.rating} Stars`;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(fic);
+        }
+      });
+
+      const container = document.getElementById('ficsContainer');
+      container.innerHTML = '';
+
+      if (Object.keys(grouped).length === 0) {
+        container.innerHTML = '<div class="text-center opacity-50 py-12">No fanfictions found.</div>';
+        return;
+      }
+
+      for (const [groupName, ficList] of Object.entries(grouped)) {
+        const groupEl = document.createElement('div');
+        groupEl.className = 'space-y-4';
+
+        let cardsHtml = ficList.map(fic => {
+          const coverHtml = fic.coverUrl 
+            ? `<img src="${fic.coverUrl}" alt="Cover" class="w-full h-48 object-cover rounded-t-2xl" onerror="this.onerror=null; this.src=''; this.className='hidden';">` 
+            : `<div class="w-full h-36 bg-gradient-to-br from-amber-400 via-emerald-500 to-orange-400 flex items-center justify-center rounded-t-2xl text-4xl shadow-inner">🍊</div>`;
+
+          const progressVal = fic.progress || 0;
+          const progressBg = getProgressColor(progressVal);
+          const notesCount = (fic.notes || []).length;
+
+          const titleLink = fic.link 
+            ? `<a href="${fic.link}" target="_blank" rel="noopener noreferrer" class="hover:underline hover:text-amber-500">${fic.title}</a>`
+            : fic.title;
+
+          const authorLink = fic.link 
+            ? `<a href="${fic.link}" target="_blank" rel="noopener noreferrer" class="hover:underline text-emerald-600 dark:text-emerald-400 font-semibold">${fic.author}</a>`
+            : `<span class="font-semibold text-emerald-600 dark:text-emerald-400">${fic.author}</span>`;
+
+          return `
+          <div class="card-${theme} rounded-2xl border hover:border-amber-400 transition-all duration-300 transform hover:-translate-y-1 shadow-md flex flex-col justify-between overflow-hidden group">
+            <div>
+              <div class="relative overflow-hidden">
+                ${coverHtml}
+                <div class="absolute top-2 right-2 flex gap-1">
+                  <span class="text-xs px-2.5 py-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-amber-600 dark:text-amber-300 rounded-full font-bold border border-amber-300/50 shadow-sm">${fic.status}</span>
+                </div>
+              </div>
+
+              <div class="p-4 space-y-3">
+                <div>
+                  <h3 class="font-bold text-lg leading-snug group-hover:text-amber-500 transition-colors">
+                    ${titleLink}
+                  </h3>
+                  <p class="text-xs opacity-75 mt-0.5">by ${authorLink}</p>
+                </div>
+
+                <div>
+                  <div class="flex justify-between items-center text-xs mb-1">
+                    <span class="opacity-75 font-medium">Progress</span>
+                    <span class="font-bold">${progressVal}%</span>
+                  </div>
+                  <div class="w-full bg-gray-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div class="${progressBg} h-2 rounded-full transition-all duration-300" style="width: ${progressVal}%"></div>
+                  </div>
+                </div>
+
+                <div class="bg-gray-50/50 dark:bg-slate-800/40 p-3 rounded-xl border border-gray-200/50 dark:border-slate-700/40">
+                  <p class="text-xs leading-relaxed opacity-90 whitespace-pre-wrap">${fic.synopsis || 'No synopsis provided.'}</p>
+                </div>
+
+                <div class="flex flex-wrap gap-1">
+                  ${fic.tags.map(t => `<span class="text-[10px] bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300 border border-amber-300/40 px-2 py-0.5 rounded-full font-medium">${t}</span>`).join('')}
+                </div>
+              </div>
+            </div>
+
+            <div class="p-4 pt-0 space-y-2">
+              <button onclick="openNotesModal('${fic.id}')" class="w-full text-xs py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded-xl font-semibold transition flex items-center justify-center gap-1">
+                <span>🐥</span> Highlights & Notes (${notesCount})
+              </button>
+
+              <div class="pt-2 border-t border-gray-200/60 dark:border-slate-800/50 flex justify-between items-center text-xs opacity-80">
+                <span class="font-bold text-amber-500">★ ${fic.rating}/5 <span class="opacity-60 font-normal">(${fic.wordCount ? fic.wordCount.toLocaleString() : 0}w)</span></span>
+                <div class="space-x-2">
+                  <button onclick="editFic('${fic.id}')" class="hover:text-amber-500 font-semibold">Edit</button>
+                  <button onclick="deleteFic('${fic.id}')" class="hover:text-rose-500 font-semibold">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `}).join('');
+
+        groupEl.innerHTML = `
+          <div class="flex items-center gap-3 border-b border-gray-300/40 pb-3">
+            <h2 class="text-xl font-bold text-amber-500 truncate">${groupName}</h2>
+            <span class="text-xs bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-300 px-2.5 py-0.5 rounded-full font-bold border border-amber-300">${ficList.length}</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-start">${cardsHtml}</div>
+        `;
+
+        container.appendChild(groupEl);
+      }
+    }
+
+    /* Constellation Map Logic */
+    function initConstellationMap() {
+      const canvas = document.getElementById('mapCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const fics = getFics();
+
+      if (mapAnimationFrame) cancelAnimationFrame(mapAnimationFrame);
+
+      const parentWidth = canvas.parentElement.clientWidth || 800;
+      const parentHeight = canvas.parentElement.clientHeight || 600;
+      
+      canvas.width = parentWidth;
+      canvas.height = parentHeight;
+
+      if (starNodes.length === 0 || starNodes.length !== fics.length) {
+        starNodes = fics.map((fic) => {
+          const radius = Math.min(14, Math.max(7, (fic.wordCount || 20000) / 10000));
+          let color = '#fb923c';
+          if (fic.status === 'Completed') color = '#34d399';
+          if (fic.status === 'Unread') color = '#fde047';
+
+          return {
+            id: fic.id,
+            title: fic.title,
+            author: fic.author,
+            fandom: fic.fandom,
+            status: fic.status,
+            wordCount: fic.wordCount,
+            rating: fic.rating,
+            x: Math.random() * (canvas.width - 160) + 80,
+            y: Math.random() * (canvas.height - 160) + 80,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            radius: radius,
+            color: color
+          };
+        });
+      }
+
+      function drawMap() {
+        if (viewMode !== 'map') return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        for (let i = 0; i < starNodes.length; i++) {
+          for (let j = i + 1; j < starNodes.length; j++) {
+            if (starNodes[i].fandom.toLowerCase() === starNodes[j].fandom.toLowerCase()) {
+              ctx.beginPath();
+              ctx.moveTo(starNodes[i].x, starNodes[i].y);
+              ctx.lineTo(starNodes[j].x, starNodes[j].y);
+              ctx.strokeStyle = 'rgba(251, 146, 60, 0.25)';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+            }
+          }
+        }
+
+        starNodes.forEach(node => {
+          node.x += node.vx;
+          node.y += node.vy;
+
+          if (node.x <= 40 || node.x >= canvas.width - 40) node.vx *= -1;
+          if (node.y <= 40 || node.y >= canvas.height - 40) node.vy *= -1;
+
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.radius * 2.2, 0, Math.PI * 2);
+          ctx.fillStyle = node.color + '33';
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+          ctx.fillStyle = node.color;
+          ctx.fill();
+
+          ctx.fillStyle = '#fde047';
+          ctx.font = '11px sans-serif';
+          ctx.fillText(node.title, node.x + node.radius + 6, node.y + 4);
+        });
+
+        mapAnimationFrame = requestAnimationFrame(drawMap);
+      }
+
+      drawMap();
+
+      canvas.onmousemove = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        hoveredNode = starNodes.find(node => {
+          const dist = Math.hypot(node.x - mx, node.y - my);
+          return dist <= node.radius + 8;
+        });
+
+        const tooltip = document.getElementById('starTooltip');
+        if (hoveredNode) {
+          tooltip.style.left = `${mx + 15}px`;
+          tooltip.style.top = `${my + 15}px`;
+          tooltip.innerHTML = `
+            <p class="font-bold text-amber-400 text-sm">${hoveredNode.title}</p>
+            <p class="opacity-80">by ${hoveredNode.author}</p>
+            <p class="mt-1">Fandom: <span class="font-medium">${hoveredNode.fandom}</span></p>
+            <p>Status: <span class="font-medium">${hoveredNode.status}</span></p>
+            <p>★ ${hoveredNode.rating}/5 • ${(hoveredNode.wordCount || 0).toLocaleString()} words</p>
+          `;
+          tooltip.classList.remove('hidden');
+        } else {
+          tooltip.classList.add('hidden');
+        }
+      };
+
+      canvas.onclick = () => {
+        if (hoveredNode) editFic(hoveredNode.id);
+      };
+    }
+
+    /* Modal Logic & Handlers */
+    function openModal(fic = null) {
+      document.getElementById('ficModal').classList.remove('hidden');
+      document.getElementById('ficModal').classList.add('flex');
+      if (fic) {
+        document.getElementById('modalTitle').innerText = 'Edit Fanfiction';
+        document.getElementById('ficId').value = fic.id;
+        document.getElementById('title').value = fic.title;
+        document.getElementById('author').value = fic.author;
+        document.getElementById('fandom').value = fic.fandom;
+        document.getElementById('status').value = fic.status;
+        document.getElementById('progress').value = fic.progress || 0;
+        document.getElementById('wordCount').value = fic.wordCount;
+        document.getElementById('rating').value = fic.rating;
+        document.getElementById('coverUrl').value = fic.coverUrl || '';
+        document.getElementById('synopsis').value = fic.synopsis || '';
+        document.getElementById('link').value = fic.link;
+        document.getElementById('tags').value = fic.tags.join(', ');
+      } else {
+        document.getElementById('modalTitle').innerText = 'Add New Fanfiction';
+        document.getElementById('ficForm').reset();
+        document.getElementById('ficId').value = '';
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('ficModal').classList.add('hidden');
+      document.getElementById('ficModal').classList.remove('flex');
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const fics = getFics();
+      const id = document.getElementById('ficId').value;
+      const tags = document.getElementById('tags').value.split(',').map(t => t.trim()).filter(Boolean);
+      const existingFic = fics.find(f => f.id === id);
+
+      const ficData = {
+        id: id || Date.now().toString(),
+        title: document.getElementById('title').value,
+        author: document.getElementById('author').value,
+        fandom: document.getElementById('fandom').value,
+        status: document.getElementById('status').value,
+        progress: parseInt(document.getElementById('progress').value) || 0,
+        wordCount: parseInt(document.getElementById('wordCount').value) || 0,
+        rating: parseInt(document.getElementById('rating').value) || 5,
+        coverUrl: document.getElementById('coverUrl').value,
+        synopsis: document.getElementById('synopsis').value,
+        link: document.getElementById('link').value,
+        tags: tags,
+        notes: existingFic ? (existingFic.notes || []) : []
+      };
+
+      if (id) {
+        const index = fics.findIndex(f => f.id === id);
+        if (index !== -1) fics[index] = ficData;
+      } else {
+        fics.push(ficData);
+      }
+
+      saveFics(fics);
+      starNodes = [];
+      closeModal();
+      renderApp();
+    }
+
+    function editFic(id) {
+      const fics = getFics();
+      const fic = fics.find(f => f.id === id);
+      if (fic) openModal(fic);
+    }
+
+    function deleteFic(id) {
+      if (confirm('Delete this fic?')) {
+        const fics = getFics().filter(f => f.id !== id);
+        saveFics(fics);
+        starNodes = [];
+        renderApp();
+      }
+    }
+
+    /* Notes & Dictionary Logic */
+    function openNotesModal(ficId) {
+      document.getElementById('activeFicId').value = ficId;
+      document.getElementById('notesModal').classList.remove('hidden');
+      document.getElementById('notesModal').classList.add('flex');
+      renderNotes();
+    }
+
+    function closeNotesModal() {
+      document.getElementById('notesModal').classList.add('hidden');
+      document.getElementById('notesModal').classList.remove('flex');
+    }
+
+    function renderNotes() {
+      const ficId = document.getElementById('activeFicId').value;
+      const fics = getFics();
+      const fic = fics.find(f => f.id === ficId);
+      const listContainer = document.getElementById('notesList');
+      listContainer.innerHTML = '';
+
+      if (!fic || !fic.notes || fic.notes.length === 0) {
+        listContainer.innerHTML = '<p class="text-xs opacity-50 italic text-center py-4">No highlights saved yet.</p>';
+        return;
+      }
+
+      fic.notes.forEach(note => {
+        const item = document.createElement('div');
+        item.className = 'p-3 rounded-xl border opacity-90 text-xs flex justify-between items-start gap-2';
+        item.innerHTML = `
+          <div class="space-y-1">
+            <p class="text-amber-600 dark:text-amber-300 italic font-medium">"${note.quote}"</p>
+            ${note.text ? `<p class="opacity-80 font-medium">${note.text}</p>` : ''}
+          </div>
+          <button onclick="deleteNote('${fic.id}', '${note.id}')" class="text-rose-500 hover:opacity-100 font-bold">✕</button>
+        `;
+        listContainer.appendChild(item);
+      });
+    }
+
+    function handleAddNote(e) {
+      e.preventDefault();
+      const ficId = document.getElementById('activeFicId').value;
+      const quote = document.getElementById('noteQuote').value;
+      const text = document.getElementById('noteText').value;
+
+      const fics = getFics();
+      const fic = fics.find(f => f.id === ficId);
+      if (fic) {
+        if (!fic.notes) fic.notes = [];
+        fic.notes.push({ id: Date.now().toString(), quote, text });
+        saveFics(fics);
+        document.getElementById('noteQuote').value = '';
+        document.getElementById('noteText').value = '';
+        renderNotes();
+        renderApp();
+      }
+    }
+
+    function deleteNote(ficId, noteId) {
+      const fics = getFics();
+      const fic = fics.find(f => f.id === ficId);
+      if (fic && fic.notes) {
+        fic.notes = fic.notes.filter(n => n.id !== noteId);
+        saveFics(fics);
+        renderNotes();
+        renderApp();
+      }
+    }
+
+    function openDictionaryModal() {
+      document.getElementById('dictModal').classList.remove('hidden');
+      document.getElementById('dictModal').classList.add('flex');
+    }
+
+    function closeDictionaryModal() {
+      document.getElementById('dictModal').classList.add('hidden');
+      document.getElementById('dictModal').classList.remove('flex');
+    }
+
+    async function lookupWord() {
+      const word = document.getElementById('dictInput').value.trim();
+      const resultBox = document.getElementById('dictResult');
+      if (!word) return;
+
+      resultBox.innerHTML = '<p class="text-xs opacity-50">Searching...</p>';
+
+      try {
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+        if (!res.ok) throw new Error('Not found');
+        const data = await res.json();
+        
+        const entry = data[0];
+        const meanings = entry.meanings.map(m => `
+          <div class="mb-2">
+            <span class="font-bold text-emerald-600 dark:text-emerald-400 capitalize">${m.partOfSpeech}</span>: 
+            ${m.definitions[0].definition}
+          </div>
+        `).join('');
+
+        resultBox.innerHTML = `
+          <div class="space-y-1">
+            <h4 class="font-bold text-base text-amber-500">${entry.word}</h4>
+            <p class="text-xs opacity-60 mb-2">${entry.phonetic || ''}</p>
+            ${meanings}
+          </div>
+        `;
+      } catch (err) {
+        resultBox.innerHTML = `<p class="text-xs text-rose-500">Could not find definition for "${word}".</p>`;
+      }
+    }
+
+    /* Orange & Chick Emoji Rain Animation */
+    function initRain() {
+      const canvas = document.getElementById('rainCanvas');
+      const ctx = canvas.getContext('2d');
+      let width = canvas.width = window.innerWidth;
+      let height = canvas.height = window.innerHeight;
+
+      window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      });
+
+      const emojis = ['🍊', '🐥', '🍊', '🍊', '🐥'];
+      const raindrops = Array.from({ length: 35 }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height - height,
+        speed: 1.5 + Math.random() * 2.5,
+        size: 18 + Math.random() * 16,
+        emoji: emojis[Math.floor(Math.random() * emojis.length)],
+        rotation: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.04
+      }));
+
+      function animateRain() {
+        ctx.clearRect(0, 0, width, height);
+
+        if (isRainActive) {
+          raindrops.forEach(drop => {
+            drop.y += drop.speed;
+            drop.rotation += drop.rotSpeed;
+
+            if (drop.y > height + 40) {
+              drop.y = -40;
+              drop.x = Math.random() * width;
+            }
+
+            ctx.save();
+            ctx.translate(drop.x, drop.y);
+            ctx.rotate(drop.rotation);
+            ctx.font = `${drop.size}px serif`;
+            ctx.fillText(drop.emoji, 0, 0);
+            ctx.restore();
+          });
+        }
+
+        requestAnimationFrame(animateRain);
+      }
+
+      animateRain();
+    }
+
+    function toggleRain() {
+      isRainActive = !isRainActive;
+      const btn = document.getElementById('btnRainToggle');
+      btn.innerHTML = `🍊🐥 Rain: ${isRainActive ? 'ON' : 'OFF'}`;
+      btn.className = `${isRainActive ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-700 hover:bg-slate-800'} text-white font-medium px-3 py-2 rounded-xl text-sm shadow-md flex items-center gap-1.5 transition`;
+    }
+
+    document.addEventListener('mouseup', () => {
+      const selected = window.getSelection().toString().trim();
+      if (selected && selected.length > 1 && selected.length < 30 && !selected.includes(' ')) {
+        document.getElementById('dictInput').value = selected;
+      }
+    });
+
+    setTheme(currentTheme());
+    initRain();
+  </script>
+</body>
+</html>
